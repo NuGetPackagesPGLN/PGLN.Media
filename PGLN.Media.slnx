@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="PGLN.Media.Abstractions/PGLN.Media.Abstractions.csproj" />
+  <Project Path="PGLN.Media.Storage.Azure/PGLN.Media.Storage.Azure.csproj" />
   <Project Path="PGLN.Media.Validation.Tests/PGLN.Media.Validation.Tests.csproj" />
   <Project Path="PGLN.Media.Validation/PGLN.Media.Validation.csproj" />
 </Solution>
