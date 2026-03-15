@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <Authors>Nkosinathi Tshabalala</Authors>
+    <Company>PGLN</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/NuGetPackagesPGLN/PGLN.Media</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/NuGetPackagesPGLN/PGLN.Media</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>media;upload;processing</PackageTags>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
