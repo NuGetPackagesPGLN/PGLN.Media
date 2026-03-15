@@ -1,0 +1,77 @@
+name: CD - Publish to NuGet
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0-validation
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for versioning
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build -c Release --no-restore
+    
+    - name: Test
+      run: dotnet test -c Release --no-build --verbosity normal
+    
+    - name: Pack Abstractions
+      if: contains(github.ref, 'abstractions')
+      run: dotnet pack PGLN.Media.Abstractions/PGLN.Media.Abstractions.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Pack Validation
+      if: contains(github.ref, 'validation')
+      run: dotnet pack PGLN.Media.Validation/PGLN.Media.Validation.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Pack Storage.Azure
+      if: contains(github.ref, 'storage')
+      run: dotnet pack PGLN.Media.Storage.Azure/PGLN.Media.Storage.Azure.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Pack Processing.Image
+      if: contains(github.ref, 'processing')
+      run: dotnet pack PGLN.Media.Processing.Image/PGLN.Media.Processing.Image.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Pack Hosting
+      if: contains(github.ref, 'hosting')
+      run: dotnet pack PGLN.Media.Hosting/PGLN.Media.Hosting.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: List nupkg files
+      run: ls -la nupkg/
+    
+    - name: Push to NuGet
+      run: |
+        for file in nupkg/*.nupkg; do
+          echo "Pushing $file..."
+          dotnet nuget push "$file" \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        done
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        body_path: CHANGELOG.md
+        generate_release_notes: true
+        files: nupkg/*.nupkg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
