@@ -4,6 +4,19 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>PGLN.Media.Abstractions</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Nkosinathi Tshabalala</Authors>
+    <Description>Core interfaces, models, and enums for PGLN.Media ecosystem.</Description>
+    <PackageTags>media;upload;abstractions</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/NuGetPackagesPGLN/PGLN.Media.git</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
