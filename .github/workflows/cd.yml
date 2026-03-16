@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write  # Add this line!
+  contents: write
   packages: read
 
 jobs:
@@ -14,48 +14,65 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: 8.0.x
-      
-      - name: Restore dependencies
-        run: dotnet restore
-      
-      - name: Build
-        run: dotnet build -c Release --no-restore
-      
-      - name: Test
-        run: dotnet test -c Release --no-build --verbosity normal
-      
-      - name: Pack Validation
-        if: contains(github.ref, 'validation')
-        run: dotnet pack PGLN.Media.Validation/PGLN.Media.Validation.csproj -c Release -o nupkg
-      
-      - name: Push to NuGet
-        run: |
-          if [ -d "nupkg" ] && [ "$(ls -A nupkg)" ]; then
-            for package in nupkg/*.nupkg; do
-              echo "Pushing $package to NuGet..."
-              dotnet nuget push "$package" \
-                --api-key ${{ secrets.NUGET_API_KEY }} \
-                --source https://api.nuget.org/v3/index.json \
-                --skip-duplicate
-            done
-          else
-            echo "No packages to push"
-          fi
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          files: nupkg/*.nupkg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build -c Release --no-restore
+    
+    - name: Test
+      env:
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      run: dotnet test -c Release --no-build --verbosity normal
+    
+    - name: Create nupkg directory
+      run: mkdir -p nupkg
+    
+    - name: Pack Abstractions
+      if: contains(github.ref, 'abstractions')
+      run: dotnet pack PGLN.Media.Abstractions/PGLN.Media.Abstractions.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Pack Validation
+      if: contains(github.ref, 'validation')
+      run: dotnet pack PGLN.Media.Validation/PGLN.Media.Validation.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Pack Storage.Azure
+      if: contains(github.ref, 'storage')
+      run: dotnet pack PGLN.Media.Storage.Azure/PGLN.Media.Storage.Azure.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
+    - name: List generated packages
+      run: ls -la nupkg/
+    
+    - name: Push to NuGet
+      run: |
+        for package in nupkg/*.nupkg; do
+          echo "Pushing $package to NuGet..."
+          dotnet nuget push "$package" \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        done
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        generate_release_notes: true
+        files: nupkg/*.nupkg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
