@@ -3,7 +3,11 @@ name: CD - Publish to NuGet
 on:
   push:
     tags:
-      - 'v*'  # Trigger on version tags like v1.0.0-validation
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: read
 
 jobs:
   publish:
@@ -31,6 +35,8 @@ jobs:
       run: dotnet build -c Release --no-restore
     
     - name: Test
+      env:
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
       run: dotnet test -c Release --no-build --verbosity normal
     
     - name: Create nupkg directory
@@ -44,25 +50,22 @@ jobs:
       if: contains(github.ref, 'validation')
       run: dotnet pack PGLN.Media.Validation/PGLN.Media.Validation.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
     
+    - name: Pack Storage.Azure
+      if: contains(github.ref, 'storage')
+      run: dotnet pack PGLN.Media.Storage.Azure/PGLN.Media.Storage.Azure.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
+    
     - name: List generated packages
-      run: |
-        echo "Generated nupkg files:"
-        ls -la nupkg/
+      run: ls -la nupkg/
     
     - name: Push to NuGet
       run: |
-        if [ -d "nupkg" ] && [ "$(ls -A nupkg)" ]; then
-          for package in nupkg/*.nupkg; do
-            echo "Pushing $package to NuGet..."
-            dotnet nuget push "$package" \
-              --api-key ${{ secrets.NUGET_API_KEY }} \
-              --source https://api.nuget.org/v3/index.json \
-              --skip-duplicate
-          done
-        else
-          echo "No nupkg files found to push"
-          exit 1
-        fi
+        for package in nupkg/*.nupkg; do
+          echo "Pushing $package to NuGet..."
+          dotnet nuget push "$package" \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        done
     
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -72,3 +75,4 @@ jobs:
         files: nupkg/*.nupkg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
