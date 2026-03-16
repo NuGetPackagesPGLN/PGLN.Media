@@ -1,28 +1,34 @@
-name: CI
+name: CD - Publish to NuGet
 
 on:
   push:
-    branches: [ development, feature/* ]
-  pull_request:
-    branches: [ main, development ]
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0-validation
 
 jobs:
-  build-and-test:
+  publish:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 8.0.x
     
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
     - name: Restore dependencies
       run: dotnet restore
     
     - name: Build
-      run: dotnet build --no-restore -c Release
+      run: dotnet build -c Release --no-restore
     
     - name: Test
       env:
