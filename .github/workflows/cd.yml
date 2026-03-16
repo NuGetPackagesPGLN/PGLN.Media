@@ -3,7 +3,11 @@ name: CD - Publish to NuGet
 on:
   push:
     tags:
-      - 'v*'  # Trigger on version tags like v1.0.0-validation
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: read
 
 jobs:
   publish:
@@ -13,7 +17,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # Fetch all history for versioning
+        fetch-depth: 0
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -31,7 +35,12 @@ jobs:
       run: dotnet build -c Release --no-restore
     
     - name: Test
+      env:
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
       run: dotnet test -c Release --no-build --verbosity normal
+    
+    - name: Create nupkg directory
+      run: mkdir -p nupkg
     
     - name: Pack Abstractions
       if: contains(github.ref, 'abstractions')
@@ -45,22 +54,14 @@ jobs:
       if: contains(github.ref, 'storage')
       run: dotnet pack PGLN.Media.Storage.Azure/PGLN.Media.Storage.Azure.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
     
-    - name: Pack Processing.Image
-      if: contains(github.ref, 'processing')
-      run: dotnet pack PGLN.Media.Processing.Image/PGLN.Media.Processing.Image.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
-    
-    - name: Pack Hosting
-      if: contains(github.ref, 'hosting')
-      run: dotnet pack PGLN.Media.Hosting/PGLN.Media.Hosting.csproj -c Release -o nupkg -p:Version=${{ steps.get_version.outputs.VERSION }}
-    
-    - name: List nupkg files
+    - name: List generated packages
       run: ls -la nupkg/
     
     - name: Push to NuGet
       run: |
-        for file in nupkg/*.nupkg; do
-          echo "Pushing $file..."
-          dotnet nuget push "$file" \
+        for package in nupkg/*.nupkg; do
+          echo "Pushing $package to NuGet..."
+          dotnet nuget push "$package" \
             --api-key ${{ secrets.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
@@ -70,8 +71,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         name: Release ${{ github.ref_name }}
-        body_path: CHANGELOG.md
         generate_release_notes: true
         files: nupkg/*.nupkg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
